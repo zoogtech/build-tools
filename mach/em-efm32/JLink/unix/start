@@ -1,0 +1,8 @@
+#!/bin/sh
+
+#
+# Run JLink_EXE
+#
+export LD_LIBRARY_PATH=.:$LD_LIBRARY_PATH
+./JLinkExe $1
+

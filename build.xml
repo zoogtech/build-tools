@@ -1,0 +1,130 @@
+<project name="pintadOS-una Framework build script" basedir="." default="debug" xmlns:cpptasks="antlib:net.sf.antcontrib.cpptasks">
+
+	<property name="file.build.properties" value="${project}/build.properties" />
+	<property file="${file.build.properties}" />
+	
+	<property name="file.version.properties" value="${project}/version.properties" />
+	<property file="${file.version.properties}" />
+
+	<property file="${project}/project.properties" />
+
+	<property name="buildtools.version" value="2.8.4" />
+
+	<!-- Custom Tasks -->
+	<taskdef resource="net/sf/antcontrib/antlib.xml" />
+
+	<target name="debug">
+		
+		<available file="${file.build.properties}" property="legacy.build"/>
+		
+		<available property="project.exist" file="${project}"/>
+		<fail unless="project.exist" message="Invalid project specified. Please check the path." />
+		
+		<if>
+			<equals arg1="${legacy.build}" arg2="true"/>
+			<then>
+				<ant antfile="build.xml" target="debug" dir="mach/legacy"/>
+			</then>
+			<else>
+			
+				<antcall target="format-version-numbers"/>
+			
+				<if>
+					<equals arg1="${kernel}" arg2="true"/>
+					<then>
+						<ant antfile="${machine.family}.xml" target="kernel-debug" dir="mach/${machine.manufacturer}-${machine.family}"/>
+					</then>
+					<else>
+						<ant antfile="${machine.family}.xml" target="debug" dir="mach/${machine.manufacturer}-${machine.family}"/>
+					</else>
+				</if>
+			</else>
+		</if>
+		
+	</target>
+
+	<target name="release" depends="format-version-numbers">
+		
+		<available file="${file.build.properties}" property="legacy.build"/>
+		
+		<available property="project.exist" file="${project}"/>
+		<fail unless="project.exist" message="Invalid project specified. Please check the path." />
+		
+		<if>
+			<equals arg1="${legacy.build}" arg2="true"/>
+			<then>
+				<if>
+					<equals arg1="${kernel}" arg2="true"/>
+					<then>
+						<ant antfile="build.xml" target="kernel-release" dir="mach/legacy"/>
+					</then>
+					<else>
+						<ant antfile="build.xml" target="release" dir="mach/legacy"/>
+					</else>
+				</if>
+			</then>
+			<else>
+			
+				<antcall target="format-version-numbers"/>
+			
+				<if>
+					<equals arg1="${kernel}" arg2="true"/>
+					<then>
+						<ant antfile="${machine.family}.xml" target="kernel-release" dir="mach/${machine.manufacturer}-${machine.family}"/>
+					</then>
+					<else>
+						<ant antfile="${machine.family}.xml" target="release" dir="mach/${machine.manufacturer}-${machine.family}"/>
+					</else>
+				</if>
+			</else>
+		</if>
+
+	</target>
+	
+	<target name="release-minor" depends="format-version-numbers">
+		
+		<available file="${file.build.properties}" property="legacy.build"/>
+		
+		<available property="project.exist" file="${project}"/>
+		<fail unless="project.exist" message="Invalid project specified. Please check the path." />
+		
+		<if>
+			<equals arg1="${legacy.build}" arg2="true"/>
+			<then>
+				<ant antfile="build.xml" target="release-minor" dir="mach/legacy"/>
+			</then>
+			<else>
+			
+				<antcall target="format-version-numbers"/>
+			
+				<if>
+					<equals arg1="${kernel}" arg2="true"/>
+					<then>
+						<ant antfile="${machine.family}.xml" target="kernel-release" dir="mach/${machine.manufacturer}-${machine.family}"/>
+					</then>
+					<else>
+						<ant antfile="${machine.family}.xml" target="release-minor" dir="mach/${machine.manufacturer}-${machine.family}"/>
+					</else>
+				</if>
+			</else>
+		</if>
+
+	</target>
+
+	<target name="format-version-numbers">
+	
+		<propertyregex property="number.swcode.trim" input="${number.swcode}" 
+			regexp="\s*" replace=""/>
+		<propertyregex property="number.version.trim" input="${number.version}" 
+			regexp="\s*" replace=""/>
+		<propertyregex property="number.version.minor.trim" input="${number.version.minor}" 
+			regexp="\s*" replace=""/>
+		
+		<var name="number.swcode" value="${number.swcode.trim}"/>
+		<var name="number.version" value="${number.version.trim}"/>
+		<var name="number.version.minor" value="${number.version.minor.trim}"/>
+			
+	</target>
+	
+</project>
+

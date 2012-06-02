@@ -1,0 +1,4 @@
+exec device @machine@
+loadbin @binaryfile@, 0
+q
+

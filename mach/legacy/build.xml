@@ -1,0 +1,1251 @@
+<project name="Legacy pintadOS build for OKI 8-bit family build" basedir="." default="debug" xmlns:cpptasks="antlib:net.sf.antcontrib.cpptasks">
+
+    <property name="file.build.properties" value="${project}\build.properties" />
+    <property file="${file.build.properties}" />
+
+    <!-- Custom Tasks -->
+	<taskdef resource="net/sf/antcontrib/antlib.xml" />
+
+	<!-- Misc Properties -->
+	<property name="buildtools.version" value="1.4.9"/>
+
+	<property name="dir.header" value="h" />
+	<property name="dir.source" value="src" />
+
+	<property name="ext.gnu" value="gnu" />
+	<property name="ext.header" value="h" />
+	<property name="ext.source" value="c" />
+	<property name="ext.assembly" value="asm" />
+	<property name="ext.object" value="obj" />
+	<property name="ext.print" value="prn" />
+	<property name="ext.absolute" value="abs" />
+	<property name="ext.binary" value="hex" />
+	<property name="ext.library" value="lib" />
+	<property name="ext.temp" value="tmp" />
+	<property name="ext.map" value="map" />
+	<property name="ext.error" value="ler" />
+	<property name="ext.callstacktree" value="ct" />
+
+	<property name="kernelbuild" value="false" />
+
+	<!-- Parameters -->
+    <property name="project" value="${basedir}" />
+	<property name="location.kernel" value="..\..\..\pintadOS-v${kernel.version}-${kernel.machine}"/>
+
+	<!-- System paths -->
+	<property name="path.bin" value="${basedir}" />
+	<property name="path.rootbuild" value="${project}\build" />
+	<property name="path.debug" value="${path.rootbuild}\debug" />
+	<property name="path.releases" value="${path.rootbuild}\releases" />
+
+	<property name="path.include" value="${path.bin}\inc" />
+	<property name="path.library" value="${path.bin}\lib" />
+	<property name="path.startup" value="${path.bin}\startup" />
+
+	<property name="path.services" value="${project}\services" />
+	<property name="path.apps" value="${project}\applications" />
+	<property name="path.bootstrap" value="${project}\bootstrap" />
+	<property name="path.config" value="${project}\config" />
+
+	<property name="name.doc" value="docs" />
+
+	<!-- Special Files -->
+	<property name="gnuprocessor" value="${path.bin}\m4.exe" />
+
+	<property name="compiler" value="ccu8.exe" />
+	<property name="assembler" value="Rasu8.exe" />
+	<property name="linker" value="Rlu8.exe" />
+	<property name="hexer" value="Ohu8.exe" />
+	<property name="librarian" value="Libu8.exe" />
+	<property name="doctool" value="doxygen.exe" />
+
+	<property name="appRegistry" value="appRegistry" />
+	<property name="servRegistry" value="servRegistry" />
+
+	<property name="compiler.options.machine" value="/T" />
+	<property name="compiler.options.include" value="/I" />
+	<property name="compiler.options.debug" value="/SD" />
+	<property name="compiler.options.misc" value="/Ol /Og /Oa /Ot /Wa /Ff /LE" />
+	<property name="assembler.options.debug" value="/SD" />
+	<property name="assembler.options" value="/G /CD /WRPEAST /L /NR /NPL /NPW /NE /O.\" />
+	<property name="linker.options.debug" value="/D /SD /S" />
+	<property name="linker.options" value="/CC" />
+	<property name="gnu.options.include" value="--include=" />
+
+	<property name="linker.error.suppress" value="Warning W012: DATA/BIT segments overlap" />
+
+	<!--
+    ************************************************************************
+        Build Task Entry Points
+    ************************************************************************
+    -->
+	<target name="debug">
+
+		<var name="compiler.options.misc" value="${compiler.options.debug} ${compiler.options.misc}"/>
+		<var name="assembler.options" value="${assembler.options.debug} ${assembler.options}"/>
+		<var name="linker.options" value="${linker.options.debug} ${linker.options}"/>
+
+		<echo message="Build Tools v${buildtools.version}"/>
+		<echo message="" />
+		<echo message="********************************************" />
+		<echo message="" />
+		<echo message="Debug Build" />
+		<echo message="" />
+		<echo message="PROJECT NAME : ${title} v${number.version}.${number.unitbuild}" />
+        <echo message="" />
+        <echo message="KERNEL       : ${kernel.version}" />
+        <echo message="MACHINE      : ${machine}" />
+		<if>
+			<equals arg1="${model}" arg2="large"/>
+			<then>
+				<echo message="MODEL      : large" />
+			</then>
+			<else>
+				<echo message="MODEL      : small" />
+			</else>
+		</if>
+        <echo message="" />
+		<echo message="********************************************" />
+		<echo message="" />
+		<echo message="" />
+
+        <!-- Ensure that the Kernel directory exists before continuing -->
+        <available file="${location.kernel}" property="kerneldir.exists"/>
+        <if>
+          <equals arg1="${kerneldir.exists}" arg2="true"/>
+          <then>
+          	<echo message="Kernel directory found."/>
+          </then>
+          <else>
+          	<fail message="Kernel directory NOT found!"/>
+          </else>
+        </if>
+		
+		<antcall target="perform-debug"/>
+	</target>
+
+	<target name="perform-debug" depends="filecheck-debug, genDebugVersion, createDebugDir, preparefiles">
+
+		<antcall target="link"/>
+		<antcall target="build"/>
+	
+		<tstamp>
+			<format property="date.done" pattern="dd-MMMM-yyyy hh:mm:ss aa" />
+		</tstamp>
+
+		<echo message="Build Tools v${buildtools.version}"/>
+		<echo message="" />
+		<echo message="********************************************" />
+		<echo message="" />
+		<echo message="${date.done}" />
+		<echo message="" />
+		<echo message="Debug Build" />
+		<echo message="" />
+		<echo message="PROJECT NAME : ${title}" />
+		<echo message="" />
+		<echo message="SW CODE      : ${number.swcode}" />
+		<echo message="VERSION      : ${number.version}" />
+		<echo message="BUILD        : ${number.unitbuild}" />
+		<echo message="" />
+        <echo message="KERNEL       : ${kernel.version}" />
+		<echo message="MACHINE      : ${machine}" />
+		<if>
+			<equals arg1="${model}" arg2="large"/>
+			<then>
+				<echo message="MODEL      : large" />
+			</then>
+			<else>
+				<echo message="MODEL      : small" />
+			</else>
+		</if>
+		<echo message="" />
+		<echo message="Binaries are available at ${path.build}" />
+		<echo message="" />
+		<echo message="********************************************" />
+	</target>
+
+	<target name="release-minor">
+
+		<math result="number.unitbuild" operand1="${number.unitbuild}" operation="+" operand2="1" datatype="int"/>
+
+		<echo message="Build Tools v${buildtools.version}"/>
+		<echo message="" />
+		<echo message="********************************************" />
+		<echo message="" />
+		<echo message="Minor Release Build" />
+		<echo message="" />
+		<echo message="PROJECT NAME : ${title} v${number.version}.${number.unitbuild}" />
+        <echo message="" />
+        <echo message="KERNEL       : ${kernel.version}" />
+        <echo message="MACHINE      : ${machine}" />
+		<if>
+			<equals arg1="${model}" arg2="large"/>
+			<then>
+				<echo message="MODEL      : large" />
+			</then>
+			<else>
+				<echo message="MODEL      : small" />
+			</else>
+		</if>
+        <echo message="" />
+		<echo message="********************************************" />
+		<echo message="" />
+		<echo message="" />
+
+        <!-- Ensure that the Kernel directory exists before continuing -->
+        <available file="${location.kernel}" property="kerneldir.exists"/>
+        <if>
+          <equals arg1="${kerneldir.exists}" arg2="true"/>
+          <then>
+          	<echo message="Kernel directory found."/>
+          </then>
+          <else>
+          	<fail message="Kernel directory NOT found!"/>
+          </else>
+        </if>
+		
+		<antcall target="perform-release"/>
+	</target>
+
+	<target name="release">
+
+		<math result="number.version" operand1="${number.version}" operation="+" operand2="1" datatype="int"/>
+		<var name="number.unitbuild" value="0"/>
+
+		<echo message="Build Tools v${buildtools.version}"/>
+		<echo message="" />
+		<echo message="********************************************" />
+		<echo message="" />
+		<echo message="Major Release Build" />
+		<echo message="" />
+		<echo message="PROJECT NAME : ${title} v${number.version}.${number.unitbuild}" />
+        <echo message="" />
+        <echo message="KERNEL       : ${kernel.version}" />
+        <echo message="MACHINE      : ${machine}" />
+		<if>
+			<equals arg1="${model}" arg2="large"/>
+			<then>
+				<echo message="MODEL      : large" />
+			</then>
+			<else>
+				<echo message="MODEL      : small" />
+			</else>
+		</if>
+        <echo message="" />
+		<echo message="********************************************" />
+		<echo message="" />
+		<echo message="" />
+
+        <!-- Ensure that the Kernel directory exists before continuing -->
+        <available file="${location.kernel}" property="kerneldir.exists"/>
+        <if>
+          <equals arg1="${kerneldir.exists}" arg2="true"/>
+          <then>
+          	<echo message="Kernel directory found."/>
+          </then>
+          <else>
+          	<fail message="Kernel directory NOT found!"/>
+          </else>
+        </if>
+		
+		<antcall target="perform-release"/>
+	</target>
+
+	<target name="perform-release" depends="filecheck-release, genReleaseVersion, createReleasesDir, preparefiles">
+
+		<antcall target="link"/>
+		<antcall target="build"/>
+		<antcall target="doc"/>
+		<antcall target="package"/>
+
+		<tstamp>
+			<format property="date.done" pattern="dd-MMMM-yyyy hh:mm:ss aa" />
+		</tstamp>
+
+		<echo message="Build Tools v${buildtools.version}"/>
+		<echo message="" />
+		<echo message="********************************************" />
+		<echo message="" />
+		<echo message="${date.done}" />
+		<echo message="" />
+		<echo message="Release Build" />
+		<echo message="" />
+		<echo message="PROJECT NAME : ${title}" />
+		<echo message="" />
+		<echo message="SW CODE      : ${number.swcode}" />
+		<echo message="VERSION      : ${number.version}" />
+		<echo message="BUILD        : ${number.unitbuild}" />
+		<echo message="" />
+        <echo message="KERNEL       : ${kernel.version}" />
+		<echo message="MACHINE      : ${machine}" />
+		<if>
+			<equals arg1="${model}" arg2="large"/>
+			<then>
+				<echo message="MODEL      : large" />
+			</then>
+			<else>
+				<echo message="MODEL      : small" />
+			</else>
+		</if>
+		<echo message="" />
+		<echo message="Binaries are available at ${path.releases}\${dir.build.root}" />
+		<echo message="" />
+		<echo message="********************************************" />
+	</target>
+
+	<target name="kernel-debug">
+
+		<var name="compiler.options.misc" value="${compiler.options.debug} ${compiler.options.misc}"/>
+		<var name="assembler.options" value="${assembler.options.debug} ${assembler.options}"/>
+		<var name="linker.options" value="${linker.options.debug} ${linker.options}"/>
+
+		<echo message="Build Tools v${buildtools.version}"/>
+		<echo message="" />
+		<echo message="********************************************" />
+		<echo message="" />
+		<echo message="Kernel Debug Build" />
+		<echo message="" />
+		<echo message="PROJECT NAME : ${title} v${number.swcode}.${number.version}.${number.unitbuild}" />
+        <echo message="" />
+        <echo message="MACHINE       : ${machine}" />
+		<if>
+			<equals arg1="${model}" arg2="large"/>
+			<then>
+				<echo message="MODEL      : large" />
+			</then>
+			<else>
+				<echo message="MODEL      : small" />
+			</else>
+		</if>
+        <echo message="" />
+		<echo message="********************************************" />
+		<echo message="" />
+		<echo message="" />
+
+		<var name="kernelbuild" value="true"/>
+		<antcall target="perform-kernel-debug"/>
+	</target>
+
+	<target name="perform-kernel-debug" depends="filecheck-debug, genDebugVersion, createDebugDir, preparefiles, buildmodules">
+
+		<antcall target="build"/>
+
+		<mkdir dir="${path.debug}\inc" />
+        <mkdir dir="${path.debug}\obj" />
+	
+		<tstamp>
+			<format property="date.done" pattern="dd-MMMM-yyyy hh:mm:ss aa" />
+		</tstamp>
+
+		<echo message="Build Tools v${buildtools.version}"/>
+		<echo message="" />
+		<echo message="********************************************" />
+		<echo message="" />
+		<echo message="${date.done}" />
+		<echo message="" />
+		<echo message="Kernel Debug Build" />
+		<echo message="" />
+		<echo message="PROJECT NAME  : ${title}" />
+		<echo message="" />
+		<echo message="MAJOR VERSION : ${number.swcode}" />
+		<echo message="MINOR VERSION : ${number.version}" />
+		<echo message="UNIT BUILD    : ${number.unitbuild}" />
+		<echo message="" />
+		<echo message="MACHINE       : ${machine}" />
+		<if>
+			<equals arg1="${model}" arg2="large"/>
+			<then>
+				<echo message="MODEL      : large" />
+			</then>
+			<else>
+				<echo message="MODEL      : small" />
+			</else>
+		</if>
+		<echo message="" />
+		<echo message="Binaries are available at ${path.build}" />
+		<echo message="" />
+		<echo message="********************************************" />
+	</target>
+
+	<target name="kernel-release">
+
+		<echo message="Build Tools v${buildtools.version}"/>
+		<echo message="" />
+		<echo message="********************************************" />
+		<echo message="" />
+		<echo message="Kernel Release Build" />
+		<echo message="" />
+		<echo message="PROJECT NAME : ${title} v${number.swcode}.${number.version}.${number.unitbuild}" />
+		<echo message="" />
+		<echo message="********************************************" />
+		<echo message="" />
+		<echo message="" />
+
+		<var name="kernelbuild" value="true"/>
+		<antcall target="perform-kernel-release"/>
+	</target>
+
+	<target name="perform-kernel-release" depends="filecheck-release, genReleaseVersion, createReleasesDir, preparefiles, buildmodules">
+
+		<antcall target="build"/>
+		<antcall target="doc"/>
+		<antcall target="package"/>
+
+		<tstamp>
+			<format property="date.done" pattern="dd-MMMM-yyyy hh:mm:ss aa" />
+		</tstamp>
+
+		<echo message="Build Tools v${buildtools.version}"/>
+		<echo message="" />
+		<echo message="********************************************" />
+		<echo message="" />
+		<echo message="${date.done}" />
+		<echo message="" />
+		<echo message="Kernel Release Build" />
+		<echo message="" />
+		<echo message="PROJECT NAME  : ${title}" />
+		<echo message="" />
+		<echo message="MAJOR VERSION : ${number.swcode}" />
+		<echo message="MINOR VERSION : ${number.version}" />
+		<echo message="UNIT BUILD    : ${number.unitbuild}" />
+		<echo message="" />
+		<echo message="Binaries are available at ${path.releases}\${dir.build.root}" />
+		<echo message="" />
+		<echo message="********************************************" />
+	</target>
+
+	<!--
+	************************************************************************
+		Initialization Tasks
+	************************************************************************
+	-->
+
+	<target name="filecheck-debug">
+
+		<echo message="Path: ${project}"/>
+		
+    		<var name="modulelist" value=""/>
+
+		<for param="moduletocreatelist">
+
+			<path>
+				<dirset dir="${project}">
+					<exclude name=".git/**"/>
+					<exclude name="build/**"/>
+				</dirset>					
+			</path>
+
+			<sequential>
+
+				<var name="path.module.to.build" value="@{moduletocreatelist}" />
+
+				<propertyregex override="yes" property="module.to.build" input="@{moduletocreatelist}" regexp=".*\\([^\.]*)" replace="\1" />
+
+				<if>
+					<not>
+						<or>
+							<equals arg1="${path.module.to.build}" arg2="${project}" casesensitive="false" />
+							<equals arg1="${module.to.build}" arg2="services" casesensitive="false" />
+							<equals arg1="${module.to.build}" arg2="config" casesensitive="false" />
+							<equals arg1="${module.to.build}" arg2="applications" casesensitive="false" />
+							<equals arg1="${module.to.build}" arg2="${dir.header}" casesensitive="false" />
+							<equals arg1="${module.to.build}" arg2="${dir.source}" casesensitive="false" />
+						</or>
+					</not>
+					<then>
+						<var name="modulelist" value="${modulelist}${module.to.build}," />
+					</then>
+				</if>
+			</sequential>
+
+		</for>
+
+		<input addproperty="build.module" validargs="${modulelist}" message="Name of the module to build. Leave the box blank if you want to build all."/>
+
+		<if>
+			<equals arg1="${build.module}" arg2="" />
+			<then>
+				<property name="build.all" value="true" />
+			</then>
+		</if>
+
+	</target>
+
+	<target name="filecheck-release">
+
+		<echo message="Path: ${project}"/>
+		
+		<var name="build.module" value="" />
+		<property name="build.all" value="true" />
+
+	</target>
+
+	<target name="cleanup-forDebug" depends="genDebugVersion">
+		<property name="path.build" value="${path.debug}" />
+
+		<if>
+			<equals arg1="${build.all}" arg2="true" />
+			<then>
+				<antcall target="cleanup" />
+			</then>
+			<else>
+				<antcall target="cleanup-partial" />
+			</else>
+		</if>
+
+	</target>
+
+	<target name="cleanup-forRelease" depends="genReleaseVersion">
+		<property name="path.build" value="${path.releases}\${dir.build}" />
+		<antcall target="cleanup" />
+	</target>
+
+	<target name="cleanup">
+
+		<!--Ensure that the bin directory is clean from any previous build-->
+		<echo message="Cleaning up to ensure that the build directories are clean from any previous build." />
+
+		<mkdir dir="${path.build}" />
+		<delete failonerror="false">
+			<fileset dir="${path.bin}" casesensitive="false">
+				<include name="*.${ext.absolute}" />
+				<include name="*.${ext.binary}" />
+				<include name="*.${ext.map}" />
+				<include name="*.${ext.header}" />
+				<include name="*.${ext.source}" />
+				<include name="*.${ext.assembly}" />
+				<include name="*.${ext.print}" />
+				<include name="*.${ext.object}" />
+				<include name="*.${ext.error}" />
+				<include name="*.${ext.callstacktree}" />
+			</fileset>
+			<fileset dir="${path.build}" casesensitive="false">
+				<include name="**/*.${ext.absolute}" />
+				<include name="**/*.${ext.binary}" />
+				<include name="**/*.${ext.map}" />
+				<include name="**/*.${ext.header}" />
+				<include name="**/*.${ext.source}" />
+				<include name="**/*.${ext.assembly}" />
+				<include name="**/*.${ext.print}" />
+				<include name="**/*.${ext.object}" />
+				<include name="*.${ext.error}" />
+				<include name="*.${ext.callstacktree}" />
+			</fileset>
+		</delete>
+
+		<delete includeemptydirs="true" failonerror="false">
+			<fileset dir="${path.build}" />
+			<fileset dir="${path.debug}" />
+			<fileset dir="${path.releases}\${dir.build}" />
+		</delete>
+
+		<echo message="Done!" />
+
+	</target>
+
+	<target name="cleanup-partial">
+
+		<!--Ensure that the bin directory is clean from any previous build-->
+		<echo message="Cleaning up to ensure that the build directories are clean from any previous build." />
+
+		<mkdir dir="${path.build}" />
+		<delete failonerror="false">
+			<fileset dir="${path.bin}" casesensitive="false">
+				<include name="*.${ext.absolute}" />
+				<include name="*.${ext.binary}" />
+				<include name="*.${ext.map}" />
+			</fileset>
+			<fileset dir="${path.build}" casesensitive="false">
+				<include name="**/*.${ext.absolute}" />
+				<include name="**/*.${ext.binary}" />
+				<include name="**/*.${ext.map}" />
+			</fileset>
+		</delete>
+
+	</target>
+
+	<target name="createDebugDir" depends="cleanup-forDebug, genDebugVersion">
+		<mkdir dir="${path.debug}" />
+	</target>
+
+	<target name="createReleasesDir" depends="cleanup-forRelease, genReleaseVersion">
+		<mkdir dir="${path.releases}\${dir.build}" />
+	</target>
+
+	<!--
+	************************************************************************
+		Version Control Tasks
+	************************************************************************
+	-->
+	<target name="reset">
+		<echo message="Resetting Build #s..." />
+		<echo message="SW CODE    : ${number.swcode}" />
+		<echo message="" />
+		<echo message="from..." />
+		<echo message="VERSION    : ${number.version}" />
+		<echo message="UNIT BUILD : ${number.unitbuild}" />
+		<echo message="" />
+
+		<var name="number.version" value="-1"/>
+		<var name="number.unitbuild" value="-1"/>
+		<propertyfile file="${file.build.properties}">
+		    	<entry key="number.version" type="int" operation="=" value="${number.version}"/>
+		    	<entry key="number.unitbuild" type="int" operation="=" value="${number.unitbuild}"/>
+		</propertyfile>
+
+		<echo message="" />
+		<echo message="to..." />
+		<echo message="VERSION    : ${number.version}" />
+		<echo message="UNIT BUILD : ${number.unitbuild}" />
+		<echo message="" />
+	</target>
+
+	<target name="regress">
+		<echo message="Regressing Build #s..." />
+		<echo message="SW CODE     : ${number.swcode}" />
+		<echo message="" />
+		<echo message="from..." />
+		<echo message="VERSION    : ${number.version}" />
+		<echo message="UNIT BUILD : ${number.unitbuild}" />
+		<echo message="" />
+		<math result="number.version" operand1="${number.version}" operation="-" operand2="1" datatype="int"/>
+		<propertyfile file="${file.build.properties}">
+		    	<entry key="number.version" type="int" operation="=" value="${number.version}"/>
+		</propertyfile>
+		<echo message="" />
+		<echo message="to..." />
+		<echo message="VERSION    : ${number.version}" />
+		<echo message="UNIT BUILD : ${number.unitbuild}" />
+		<echo message="" />
+	</target>
+
+	<target name="genDebugVersion" depends="filecheck-debug">
+		
+		<if>
+			<equals arg1="${kernelbuild}" arg2="false"/>
+			<then>
+				<propertyfile file="${file.build.properties}">
+				    	<entry key="number.unitbuild" type="int" operation="=" value="${number.unitbuild}"/>
+				</propertyfile>
+			</then>
+		</if>
+
+		<tstamp>
+		    <format property="date.today" pattern="dd-MMMM-yyyy hh:mm:ss aa"/>
+		</tstamp>
+
+		<echo message="${date.today}"/>
+		<echo message="Generating Unit Test Build using Ant ${ant.version} on Java ${ant.java.version}..."/>
+
+		<if>
+			<equals arg1="${kernelbuild}" arg2="true"/>
+			<then>
+				<property name="file.build" value="${shortname}-v${number.swcode}_${number.version}"/>
+			</then>
+			<else>
+				<property name="file.build" value="${shortname}-${number.swcode}-v${number.version}"/>
+			</else>
+		</if>
+
+		<property name="dir.build.root" value="${file.build}"/>
+		<property name="dir.build" value="${dir.build.root}\src"/>
+
+	</target>
+
+	<target name="genReleaseVersion" depends="filecheck-release">
+		
+		<if>
+			<equals arg1="${kernelbuild}" arg2="false"/>
+			<then>
+				<propertyfile file="${file.build.properties}">
+				    	<entry key="number.version" type="int" operation="=" value="${number.version}"/>
+				    	<entry key="number.unitbuild" type="int" operation="=" value="${number.unitbuild}"/>
+				</propertyfile>
+			</then>
+		</if>
+
+		<tstamp>
+		    <format property="date.today" pattern="dd-MMMM-yyyy hh:mm:ss aa"/>
+		</tstamp>
+
+		<echo message="${date.today}"/>
+		<echo message=""/>
+		<echo message="Generating Release Build using Ant ${ant.version} on Java ${ant.java.version}..."/>
+
+		<if>
+			<equals arg1="${kernelbuild}" arg2="true"/>
+			<then>
+				<property name="file.build" value="${shortname}-v${number.swcode}-${machine}"/>
+				<property name="dir.build.root" value="${shortname}-v${number.swcode}.${number.version}.${number.unitbuild}-${machine}"/>
+			</then>
+			<else>
+				<property name="file.build" value="${shortname}-${number.swcode}-v${number.version}"/>
+				<property name="dir.build.root" value="${shortname}-${number.swcode}-v${number.version}.${number.unitbuild}-${machine}"/>
+			</else>
+		</if>
+
+		<property name="dir.build" value="${dir.build.root}\src"/>
+	</target>
+
+	<!--
+	********************************************************************************
+		Code preparation
+	********************************************************************************
+	-->
+	<target name="preparefiles">
+
+		<filter token="machine" value="${machine}" />
+		<filter token="title" value="${title}" />
+		<filter token="builddate" value="${date.done}" />
+		<filter token="swcode" value="${number.swcode}" />
+		<filter token="version" value="${number.version}" />
+		<filter token="unitbuild" value="${number.unitbuild}" />
+
+		<!-- Copy global files on root build -->
+		<copy todir="${path.build}" flatten="true" filtering="true" failonerror="false">
+			<fileset dir="${path.config}" casesensitive="false">
+				<include name="**/*.${ext.header}" />
+				<include name="**/*.${ext.gnu}" />
+				<include name="**/*.${ext.source}" />
+			</fileset>
+			<fileset dir="${path.bootstrap}" casesensitive="false">
+				<include name="**/*.${ext.header}" />
+				<include name="**/*.${ext.gnu}" />
+				<include name="**/*.${ext.source}" />
+			</fileset>
+		</copy>
+		
+
+		<for param="module">
+
+			<path>
+				<dirset dir="${project}">
+					<exclude name=".git/**"/>
+					<exclude name="build/**"/>
+				</dirset>					
+			</path>
+
+			<sequential>
+
+				<var name="path.module" value="@{module}" />
+
+				<propertyregex override="yes" property="name.module" input="@{module}" regexp=".*\\([^\.]*)" replace="\1" />
+
+				<if>
+					<or>
+						<equals arg1="${build.module}" arg2="" />
+						<equals arg1="${build.module}" arg2="${name.module}" />
+					</or>
+					<then>
+						<if>
+							<not>
+								<or>
+									<equals arg1="${path.module}" arg2="${project}" casesensitive="false" />
+									<equals arg1="${name.module}" arg2="services" casesensitive="false" />
+									<equals arg1="${name.module}" arg2="config" casesensitive="false" />
+									<equals arg1="${name.module}" arg2="applications" casesensitive="false" />
+									<equals arg1="${name.module}" arg2="${dir.header}" casesensitive="false" />
+									<equals arg1="${name.module}" arg2="${dir.source}" casesensitive="false" />
+								</or>
+							</not>
+							<then>
+								<echo message="processing... ${name.module}"/>
+								<antcall target="processfiles" />
+							</then>
+						</if>
+					</then>
+				</if>
+
+			</sequential>
+		</for>
+
+	</target>
+
+	<target name="processfiles">
+
+		<filter token="machine" value="${machine}" />
+		<filter token="title" value="${title}" />
+		<filter token="builddate" value="${date.done}" />
+		<filter token="swcode" value="${number.swcode}" />
+		<filter token="version" value="${number.version}" />
+		<filter token="unitbuild" value="${number.unitbuild}" />
+
+		<mkdir dir="${path.build}\${name.module}" />
+		<copy todir="${path.build}\${name.module}" flatten="true" includeEmptyDirs="false" filtering="true">
+			<fileset dir="${path.module}" casesensitive="false">
+				<exclude name="**/${name.module}.${ext.header}" />
+				<exclude name="**/*.${ext.gnu}" />
+			</fileset>
+		</copy>
+
+		<copy todir="${path.build}" flatten="true" includeEmptyDirs="false" filtering="true">
+			<fileset dir="${path.module}" casesensitive="false">
+				<include name="**/${name.module}.${ext.header}" />
+				<include name="**/*.${ext.gnu}" />
+			</fileset>
+		</copy>
+
+	</target>
+
+	<!--
+	********************************************************************************
+		Module build tasks
+	********************************************************************************
+	-->
+	<target name="buildmodules" depends="preparefiles">
+
+		<echo message="${path.build}"/>
+
+		<for param="module">
+
+			<path>
+				<dirset dir="${path.build}" />
+			</path>
+
+			<sequential>
+
+				<var name="path.module" value="@{module}" />
+
+				<propertyregex override="yes" property="name.module" input="@{module}" regexp=".*\\([^\.]*)" replace="\1" />
+
+				<if>
+
+					<or>
+						<equals arg1="${build.module}" arg2="" />
+						<equals arg1="${build.module}" arg2="${name.module}" />
+					</or>
+					<then>
+						<echo message="Building ${name.module}..."/>
+						<antcall target="buildmodule" />
+					</then>
+				</if>
+
+			</sequential>
+		</for>
+
+	</target>
+
+	<target name="buildmodule" depends="assemble" />
+
+	<target name="pre-compile">
+
+		<sequential>
+			<for param="file">
+
+				<path>
+					<fileset dir="${path.module}" casesensitive="false">
+						<include name="*.${ext.header}" />
+						<include name="*.${ext.source}" />
+					</fileset>
+				</path>
+
+				<sequential>
+
+					<echo message="Pre-compile @{file}..."/>
+
+					<exec dir="${path.bin}" executable="${gnuprocessor}" resolveexecutable="false" vmlauncher="false" output="@{file}.${ext.temp}">
+						<arg line="${gnu.options.include}${path.build}" />
+                        <arg line="${gnu.options.include}${location.kernel}" />
+						<arg line="${gnu.options.include}${location.kernel}\inc" />
+						<arg line="@{file}" />
+					</exec>
+
+					<delete file="@{file}" failonerror="true" />
+					<move file="@{file}.${ext.temp}" tofile="@{file}" failonerror="true" />
+
+				</sequential>
+			</for>
+
+		</sequential>
+	</target>
+
+	<target name="compile" depends="pre-compile">
+
+		<echo message="***Compiling***" />
+
+		<var name="compiler.options.arch" value="/MS /near" />
+		
+		<if>
+			<equals arg1="${model}" arg2="large"/>
+			<then>
+				<var name="compiler.options.arch" value="/ML /near" />
+			</then>
+		</if>
+
+		<sequential>
+			<for param="file">
+
+				<path>
+					<fileset dir="${path.module}" includes="*.${ext.source}" />
+				</path>
+
+				<sequential>
+
+					<propertyregex override="yes" property="file.name" input="@{file}" regexp=".*\\([^\.]*)\.${ext.source}" replace="\1" />
+
+					<echo message=" " />
+					<echo message="Compiling ${file.name}.${ext.source}..." />
+					
+					<exec dir="${path.bin}" executable="${compiler}" resolveexecutable="false" vmlauncher="false">
+						<arg line="${compiler.options.machine} ${machine}" />
+						<arg line="${compiler.options.include} ${path.build}" />
+						<arg line="${compiler.options.include} ${path.include}" />
+                        <arg line="${compiler.options.include} ${location.kernel}" />
+						<arg line="${compiler.options.include} ${location.kernel}\inc" />
+						<arg line="${compiler.options.misc}" />
+						<arg line="${compiler.options.extra}" />
+						<arg line="${compiler.options.arch}" />
+						<arg line="@{file}" />
+					</exec>
+
+				</sequential>
+			</for>
+
+			<move todir="${path.module}">
+				<fileset dir="${path.bin}" casesensitive="false">
+					<include name="*.${ext.assembly}" />
+				</fileset>
+			</move>
+
+		</sequential>
+	</target>
+
+	<target name="assemble" depends="compile">
+
+		<echo level="info" message="***Assembling***" />
+
+		<var name="assembler.options.arch" value="/MS /DN" />
+
+		<if>
+			<equals arg1="${model}" arg2="large"/>
+			<then>
+				<var name="assembler.options.arch" value="/ML /DN" />
+			</then>
+		</if>
+
+		<sequential>
+
+			<for param="file">
+
+				<path>
+					<fileset dir="${path.module}" includes="*.${ext.assembly}" />
+				</path>
+
+				<sequential>
+
+					<propertyregex override="yes" property="file.name" input="@{file}" regexp=".*\\([^\\.]*)\.${ext.assembly}" replace="\1" />
+
+					<echo level="info" message=" " />
+					<echo message="Assembling ${file.name}.${ext.assembly}..." />
+
+					<exec dir="${path.bin}" executable="${assembler}" resolveexecutable="true" vmlauncher="false">
+						<arg line="@{file}" />
+						<arg line="${assembler.options}" />
+						<arg line="${assembler.options.extra}" />
+						<arg line="${assembler.options.arch}" />
+					</exec>
+
+					<var name="filelist" value="${filelist}${file.name} " />
+
+				</sequential>
+			</for>
+
+			<move todir="${path.build}">
+				<fileset dir="${path.bin}" casesensitive="false">
+					<include name="*.${ext.object}" />
+				</fileset>
+			</move>
+
+		</sequential>
+	</target>
+
+	<!--
+********************************************************************************
+    Project build tasks
+********************************************************************************
+-->
+
+	<target name="link" depends="buildmodules">
+
+		<sequential>
+
+			<echo level="info" message="Generating object file list..." />
+
+			<fileset id="fileset.obj1" dir="${path.build}" includes="*.${ext.object}" />
+			<fileset id="fileset.obj2" dir="${location.kernel}" includes="*.${ext.object}" />
+            <fileset id="fileset.obj3" dir="${location.kernel}\obj" includes="*.${ext.object}" />
+			<fileset id="fileset.obj4" dir="${path.startup}" includes="${machine}.${ext.object}" />
+			<pathconvert pathsep=" " property="files.obj1" refid="fileset.obj1"/>
+			<pathconvert pathsep=" " property="files.obj2" refid="fileset.obj2"/>
+			<pathconvert pathsep=" " property="files.obj3" refid="fileset.obj3"/>
+            <pathconvert pathsep=" " property="files.obj4" refid="fileset.obj4"/>
+			<var name="filelist" value="${files.obj1} ${files.obj2} ${files.obj3} ${files.obj4}" />			
+			<echo message="${filelist}"/>
+				
+			<echo message="" />
+			<echo message="Scanning libraries..." />
+
+			<if>
+				<equals arg1="${model}" arg2="large"/>
+				<then>
+					<var name="path.library" value="${path.library}\large" />
+				</then>
+			</if>
+
+			<fileset id="fileset.lib" dir="${path.library}" includes="*.${ext.library}" casesensitive="false"/>
+			<pathconvert pathsep=" " property="liblist" refid="fileset.lib"/>
+			<echo message="${liblist}"/>
+
+			<echo message="" />
+			<echo message="Linking..." />
+
+			<exec dir="${path.bin}" executable="${linker}" outputproperty="error.output" resultproperty="error.linker" resolveexecutable="true" vmlauncher="false">
+				<arg line="${linker.options}" />
+				<arg line="${linker.options.extra}" />
+				<arg line="${filelist}," />
+				<arg line="${file.build},"/>
+				<arg line="${file.build}," />
+				<arg line="${liblist};" />
+			</exec>
+
+		</sequential>
+		
+		<echo message="${error.output}"/>
+
+		<available file="${path.bin}\${file.build}.${ext.absolute}" property="file.absolute.present" />
+		
+		<echo message="Finalizing build..." />
+
+		<if>
+			<equals arg1="${file.absolute.present}" arg2="true"/>
+			<then>
+				<exec dir="${path.bin}" executable="${hexer}" resolveexecutable="true" vmlauncher="false">
+					<arg line="${file.build}" />
+					<arg line="${file.build}" />
+				</exec>
+			</then>
+		</if>
+	</target>
+
+	<target name="housekeeping">
+
+		<echo level="info" message="Performing housekeeping..." />
+
+		<move todir="${path.build}">
+
+			<fileset dir="${path.bin}" casesensitive="false">
+				<include name="*.${ext.print}" />
+				<include name="${file.build}.*" />
+				<include name="*.${ext.error}" />
+				<include name="*.${ext.callstacktree}" />
+			</fileset>
+
+		</move>
+
+		<echo level="info" message=" " />
+		<echo level="info" message="***Compiler Errors***" />
+
+		<for param="file">
+
+			<path>
+				<fileset dir="${path.build}" includes="*.${ext.error}" />
+			</path>
+
+			<sequential>
+
+				<propertyregex override="yes" property="file.name" input="@{file}" regexp=".*\\([^\\.]*)\.${ext.error}" replace="\1" />
+
+				<typedef name="filtererrors" classname="org.TechTracks.CErrorFilter" />
+
+				<var name="error.msgs" unset="true" />
+				<loadfile property="error.msgs" srcFile="${path.build}\${file.name}.${ext.error}">
+					<filterchain>
+						<tokenfilter>
+							<filetokenizer />
+							<filtererrors />
+						</tokenfilter>
+					</filterchain>
+				</loadfile>
+
+				<if>
+					<not>
+						<equals arg1="${error.msgs}" arg2="$${error.msgs}" />
+					</not>
+					<then>
+						<echo level="info" message="${file.name}.${ext.error}" />
+						<echo message="${error.msgs}" />
+						<property name="file.error.present" value="true" />
+					</then>
+				</if>
+
+			</sequential>
+		</for>
+
+		<if>
+			<equals arg1="${file.error.present}" arg2="$${file.error.present}" />
+			<then>
+				<echo level="info" message="---NONE---" />
+			</then>
+		</if>
+
+		<if>
+			<equals arg1="${kernelbuild}" arg2="true"/>			
+			<then>
+				<var name="error.linker" value="0"/>
+			</then>
+			<else>
+				<echo level="info" message="******"/>
+		
+				<echo level="info" message=" "/>
+				<echo level="info" message="***Linker Errors***"/>
+
+					<typedef name="filterlinkererrors" classname="org.TechTracks.LinkerErrorFilter"/>
+				    	    			
+					<var name="error.msgs" unset="true"/>
+					<loadfile property="error.msgs" srcFile="${path.build}\${file.build}.${ext.map}">					
+						<filterchain>						
+							<tokenfilter>	
+								<filetokenizer/>
+								<filterlinkererrors/>
+							</tokenfilter>
+						</filterchain>		      					
+				    </loadfile>
+				
+				<propertyregex property="error.linker.msgs" input="${error.msgs}"
+				   regexp=".*(Warning W012: DATA/BIT segments overlap)[\s].*" replace=""
+					   casesensitive="true" defaultValue="${error.msgs}"/>
+
+				<if>
+					<or>
+						<equals arg1="${error.msgs}" arg2=""/>
+						<equals arg1="${error.msgs}" arg2="$${error.msgs}" />
+						<equals arg1="${error.msgs}" arg2="${linker.error.suppress}&#xA;"/>
+					</or>    		
+					<then>
+				    		<echo level="info" message="---NONE---"/>                    	
+
+						<echo level="info" message="******"/>
+		
+						<echo level="info" message=" "/>
+						<echo level="info" message="***Section sizes***"/>
+
+							<loadfile property="size.code" srcFile="${path.build}\${file.build}.${ext.map}">
+								<filterchain>
+									<filterreader classname="org.apache.tools.ant.filters.LineContains">
+									  <param type="contains" value="Total size "/>
+									</filterreader>
+								</filterchain>		      
+						    </loadfile>
+						    
+						<echo level="info" message="${size.code}"/>
+
+					</then>
+					<else>
+						<echo message="${error.linker.msgs}"/>
+					</else>
+				</if>
+			</else>
+		</if>
+	    	    
+	</target>
+
+	<target name="build" depends="housekeeping">
+
+		<if>
+			<equals arg1="${file.error.present}" arg2="true" />
+			<then>
+				<fail message="Compiler errors found!" />
+			</then>
+		</if>
+
+		<if>
+			<not>
+				<or>
+					<equals arg1="${error.msgs}" arg2=""/>
+					<equals arg1="${error.msgs}" arg2="$${error.msgs}" />
+					<equals arg1="${error.msgs}" arg2="${linker.error.suppress}&#xA;"/>
+				</or>
+			</not>
+			<then>
+				<fail message="Linker errors found!"/>
+			</then>    		
+		</if>
+
+	</target>
+
+	<target name="package">
+
+		<!-- Package the build files -->
+		<echo message="" />
+		<echo message="***Packaging the binaries***" />
+		
+		<mkdir dir="${path.releases}\${dir.build.root}\inc" />
+		<mkdir dir="${path.releases}\${dir.build.root}\obj" />
+		<move todir="${path.releases}\${dir.build.root}\inc">
+			<fileset dir="${path.releases}\${dir.build}">
+				<include name="*.gnu" />
+				<include name="*.h" />
+			</fileset>
+		</move>
+		<move todir="${path.releases}\${dir.build.root}\obj">
+			<fileset dir="${path.releases}\${dir.build}">
+				<include name="*.obj" />
+			</fileset>
+		</move>
+
+		<tstamp>
+		    <format property="file.date" pattern="yyyyMMddHHmmss"/>
+		</tstamp>
+
+		<if>
+			<equals arg1="${kernelbuild}" arg2="false"/>
+			<then>
+				<var name="file.new.build" value="${shortname}-${number.swcode}-v${number.version}.${number.unitbuild}-${machine}_${file.date}"/>
+
+				<move file="${path.releases}\${dir.build}\${file.build}.${ext.binary}" 
+					tofile="${path.releases}\${dir.build.root}\${file.new.build}.${ext.binary}"/>
+				<move file="${path.releases}\${dir.build}\${file.build}.${ext.map}" 
+					tofile="${path.releases}\${dir.build.root}\${file.new.build}.${ext.map}"/>
+
+				<tar destfile="${path.releases}\${dir.build.root}.tar.gz"
+				     	basedir="${path.releases}\${dir.build.root}"
+				     	includes="*.${ext.binary}, *.${ext.map}"
+					compression="gzip"/>
+			</then>
+		</if>
+
+		<delete dir="${path.releases}\${dir.build}"/>
+
+		<if>
+			<equals arg1="${kernelbuild}" arg2="true"/>
+			<then>
+				<tar destfile="${path.releases}\${dir.build.root}.tar.gz"
+				     	basedir="${path.releases}\${dir.build.root}"
+					compression="gzip"
+				/>
+			</then>
+		</if>
+
+	</target>
+
+	<target name="doc">
+
+		<if>
+			<equals arg1="${kernelbuild}" arg2="true"/>
+			<then>
+				<var name="project.number" value="v${number.swcode}.${number.version}.${number.unitbuild}"/>
+			</then>
+			<else>
+				<var name="project.number" value="v${number.version}.${number.unitbuild}"/>
+			</else>
+		</if>
+
+		<exec dir="${project}" executable="cmd" os="Windows XP">
+			<arg value="/c"/>
+			<arg value="(type ${path.bin}\Doxyfile &amp; echo PROJECT_NUMBER=${project.number} &amp; echo PROJECT_NAME=&quot;${title}&quot; &amp; echo INPUT=${project} &amp; echo OUTPUT_DIRECTORY=${path.releases}\${dir.build.root}-${name.doc}) | ${path.bin}\${doctool} -"/>
+		</exec>
+
+	</target>
+
+</project>
+

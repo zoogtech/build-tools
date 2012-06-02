@@ -1,0 +1,10 @@
+CHIP S1C17705
+ESSIM S1C17705
+
+RAM      000000 002FBF 00W    # Internal RAM
+IO       004000 0043FF 00B    # Peripheral Area1
+RAM      004800 004FFF 11B    # SRAM (LCD Display)
+IO       005000 005FFF 00B    # Peripheral Area2
+ROM      008000 087FFF 10H    # ROM (Flash)
+IO       FFFC00 FFFFFF 00B    # Reserved for Core I/O
+STACK    000000 002FBF        # Stack area
